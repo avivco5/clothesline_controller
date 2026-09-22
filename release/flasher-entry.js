@@ -27,7 +27,7 @@ async function flashFirmware(firmwareBytes, onEvent) {
   const transport = new Transport(port);
   const loader = new ESPLoader({
     transport,
-    baudrate: 460800,
+    baudrate: 115200,
     romBaudrate: 115200,
     terminal,
   });
