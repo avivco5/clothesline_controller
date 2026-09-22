@@ -79,7 +79,8 @@
 ```
 platformio.ini      הגדרות בנייה (board = nodemcuv2)
 src/main.cpp         קוד המקור המלא — כל הקבועים לכיוונון בראש הקובץ
-release/             חבילת הפצה לצריבה על ידי מישהו אחר (ראו למטה)
+release/             חבילת הפצה ל-flash.bat (ראו למטה)
+docs/                אתר הצריבה מהדפדפן — מוגש דרך GitHub Pages
 ```
 
 ## בנייה וצריבה
@@ -101,30 +102,37 @@ pio device monitor --port COM4 --baud 115200   # צפייה בפלט הסירי�
 
 ### אפשרות 3: צריבה מהדפדפן (Chrome/Edge, בלי שום התקנה)
 
-`release/fw-data.js` מכיל את אותה קושחה כ-base64, מוטמעת בדף HTML עצמאי
-(מפורסם כ-Claude Artifact) שצורב דרך Web Serial API באמצעות
-`release/clothesline-flasher-bundle.min.js` — חבילה עצמאית שבנינו סביב
+**<https://avivco5.github.io/clothesline_controller/>** — מוגש כ-GitHub Pages
+מתיקיית [`docs/`](docs/), צורב דרך Web Serial API באמצעות
+`docs/clothesline-flasher-bundle.min.js` — חבילה עצמאית שבנינו סביב
 [esptool-js](https://github.com/espressif/esptool-js) (Transport + ESPLoader,
-`writeFlash` בכתובת `0x0`, ללא manifest.json).
+`writeFlash` בכתובת `0x0`, ללא manifest.json). `docs/fw-data.js` מכיל את
+הקושחה כ-base64, מוטמעת ישירות בדף.
+
+**למה GitHub Pages ולא Claude Artifact:** נוסה קודם כ-Artifact ונכשל — קלוד
+עוטף כל Artifact ב-iframe שחוסם את הרשאת ה-`serial` (Permissions Policy),
+כך ש-Web Serial לא יכול לעבוד שם בשום צורה שפותחים את הקישור. GitHub Pages
+הוא עמוד HTTPS עצמאי לגמרי בלי שום עטיפה, ולכן דורש שהריפו יהיה **ציבורי**
+(Pages בחינם לא עובד על ריפו פרטי).
 
 **למה לא [esp-web-tools](https://github.com/esphome/esp-web-tools) ישירות:**
-נוסה קודם וכשל — ה-build שלו ב-CDN עושה `import` עם bare specifiers
+גם זה נוסה ונכשל — ה-build שלו ב-CDN עושה `import` עם bare specifiers
 (`"esptool-js"`, `"lit"`, `"@material/web/..."`, `"improv-wifi-serial-sdk"`)
 שדפדפן לא יכול לפענח בלי import map/bundler, מה שגרם ל-custom element
 לא לעלות בכלל ולהציג את כל תוכן ה-fallback גולמי. `esptool-js` לבדו תלוי רק
 ב-`pako` וב-`atob-lite`, כך ש-`release/flasher-entry.js` יובא ונארז
 (`esbuild --bundle`) לקובץ יחיד עצמאי לגמרי, בלי import map ובלי ספריות UI.
 
-יש לבנות מחדש ולפרסם את הדף בכל פעם שהקושחה או ה-entry משתנים — הוא לא
-מסתנכרן אוטומטית עם הריפו.
-
-**חשוב:** לאחר כל שינוי בקוד, יש לעדכן את `release/firmware.bin` ו-`release/fw-data.js`:
+**חשוב:** לאחר כל שינוי בקוד, יש לעדכן גם את `docs/fw-data.js` (ה-Pages site
+לא מסתנכרן אוטומטית עם שינויים ב-`src/main.cpp`):
 
 ```bash
 cd Clothesline-Control
 pio run
 cp .pio/build/nodemcuv2/firmware.bin release/firmware.bin
-{ printf 'const FW_BASE64 = "'; base64 -w0 release/firmware.bin; printf '";\n'; } > release/fw-data.js
+{ printf 'const FW_BASE64 = "'; base64 -w0 release/firmware.bin; printf '";\n'; } > docs/fw-data.js
+git add release/firmware.bin docs/fw-data.js
+git commit -m "Update firmware" && git push   # Pages מתעדכן אוטומטית תוך דקה-שתיים
 ```
 
 ורק אם `release/flasher-entry.js` עצמו השתנה, לבנות מחדש גם את החבילה
@@ -136,7 +144,7 @@ npm init -y && npm install esptool-js@0.7.0
 cp /path/to/Clothesline-Control/release/flasher-entry.js .
 npx esbuild flasher-entry.js --bundle --format=iife --platform=browser \
   --target=es2020 --minify --outfile=clothesline-flasher-bundle.min.js
-cp clothesline-flasher-bundle.min.js /path/to/Clothesline-Control/release/
+cp clothesline-flasher-bundle.min.js /path/to/Clothesline-Control/docs/
 ```
 
 ## כיוונון
