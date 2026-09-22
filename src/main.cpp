@@ -66,19 +66,33 @@
  * requires the user to press Unlock", also requested by the project
  * owner. This applies ONLY to a LOCKOUT caused by overload that never
  * cleared (2 failed recovery attempts, or overload persisting through a
- * recovery reverse) — every AUTOSTART_RETRY... see autoRetryMs below, the
- * unit clears the attempt counter and resumes the previously requested
- * direction on its own, on the theory that a snag may free itself over
- * time with no one around to press Unlock.
+ * recovery reverse) — every autoRetryMs (see below), the unit clears the
+ * attempt counter and resumes the previously requested direction on its
+ * own, on the theory that a snag may free itself over time with no one
+ * around to press Unlock.
  * A LOCKOUT caused by a VNH5019 diagnostic fault (DIAGA/DIAGB) is
  * deliberately EXCLUDED from auto-retry — that can indicate a real
  * driver/motor electrical fault, not just a stuck rope, and still
  * requires a human to press Unlock.
+ *
+ * WI-FI AUTO-OFF — the AP and web UI (see WIFI_ON_DURATION_MS below) are
+ * for initial setup/tuning only, per the project owner: once the right
+ * values were found, the unit is meant to just run from the burned-in
+ * defaults with no network active. Wi-Fi/the server shut down
+ * WIFI_ON_DURATION_MS after boot and never come back until the next
+ * reset/reflash — there is no way to reach the web UI after that window
+ * without power-cycling the board. The motor/protection state machine
+ * does not depend on Wi-Fi at all, so this has no effect on it.
  */
 
 // ── Wi-Fi ────────────────────────────────────────────────────────────────
 const char* AP_SSID = "Clothesline-Control";
 const char* AP_PASSWORD = "clothesline";
+
+// The AP + web UI are for initial setup/tuning only, not normal operation.
+// They shut off this many ms after boot; from then on the unit runs purely
+// from the burned-in defaults above, with no network active at all.
+const uint32_t WIFI_ON_DURATION_MS = 300000; // 5 minutes
 
 // ── Pins ─────────────────────────────────────────────────────────────────
 const uint8_t PIN_PWM = D5;          // GPIO14
@@ -107,13 +121,13 @@ const uint32_t STARTUP_SETTLE_MS = 300; // ignore DIAG pins briefly after boot
 // ── Auto-start on boot (see FLAGGED note near top of file) ─────────────
 const bool AUTOSTART_ENABLED = true;
 const uint32_t AUTOSTART_DELAY_MS = 4000; // grace period before driving off
-const uint8_t AUTOSTART_SPEED_PERCENT = 50;
+const uint8_t AUTOSTART_SPEED_PERCENT = 100;
 
 // ── Runtime-tunable protection settings ─────────────────────────────────
 // Defaults + safe clamp ranges. Actual live values are the non-const
 // globals further down (overcurrentA, overcurrentDelayMs, ...), editable
 // from the web UI and always reset to these defaults on boot.
-const float DEFAULT_OVERCURRENT_A = 6.0f;
+const float DEFAULT_OVERCURRENT_A = 3.0f;
 const float OVERCURRENT_A_MIN = 1.5f;
 const float OVERCURRENT_A_MAX = 9.0f;      // stay under the 10A fuse rating
 
@@ -121,7 +135,7 @@ const uint32_t DEFAULT_OVERCURRENT_DELAY_MS = 2000;
 const uint32_t OVERCURRENT_DELAY_MS_MIN = 200;
 const uint32_t OVERCURRENT_DELAY_MS_MAX = 10000;
 
-const uint32_t DEFAULT_REVERSE_TIME_MS = 5000;
+const uint32_t DEFAULT_REVERSE_TIME_MS = 15000;
 const uint32_t REVERSE_TIME_MS_MIN = 500;
 const uint32_t REVERSE_TIME_MS_MAX = 15000;
 
@@ -129,7 +143,7 @@ const uint8_t DEFAULT_RECOVERY_PERCENT = 64;
 const uint8_t RECOVERY_PERCENT_MIN = 10;
 const uint8_t RECOVERY_PERCENT_MAX = 100;
 
-const uint32_t DEFAULT_STOP_DELAY_MS = 500;
+const uint32_t DEFAULT_STOP_DELAY_MS = 2000;
 const uint32_t STOP_DELAY_MS_MIN = 100;
 const uint32_t STOP_DELAY_MS_MAX = 5000;
 
@@ -143,7 +157,7 @@ const uint32_t RECOVERY_RESET_MS_MAX = 600000;
 
 // Auto-retry from an overload-caused LOCKOUT only (never from a driver
 // fault LOCKOUT) — see note near top of file.
-const uint32_t DEFAULT_AUTO_RETRY_MS = 300000; // 5 minutes
+const uint32_t DEFAULT_AUTO_RETRY_MS = 1800000; // 30 minutes
 const uint32_t AUTO_RETRY_MS_MIN = 30000;      // 30 seconds
 const uint32_t AUTO_RETRY_MS_MAX = 1800000;    // 30 minutes
 
@@ -176,6 +190,7 @@ uint32_t healthyForwardStartMs = 0;
 uint32_t lastSampleMs = 0;
 
 bool autoStartPending = AUTOSTART_ENABLED;
+bool wifiActive = true;
 
 // Live protection settings — RAM only, reset to DEFAULT_* on every boot.
 float overcurrentA = DEFAULT_OVERCURRENT_A;
@@ -741,12 +756,24 @@ void setup() {
     Serial.printf("Autostart armed: forward at %u%% in %lu ms unless a fault is detected\n",
       (unsigned)AUTOSTART_SPEED_PERCENT, (unsigned long)AUTOSTART_DELAY_MS);
   }
+  Serial.printf("Wi-Fi/web UI will turn off after %lu ms; use that window to tune settings\n",
+    (unsigned long)WIFI_ON_DURATION_MS);
 }
 
 void loop() {
-  server.handleClient();
-
   uint32_t now = millis();
+
+  if (wifiActive && now >= WIFI_ON_DURATION_MS) {
+    wifiActive = false;
+    server.stop();
+    WiFi.softAPdisconnect(true);
+    WiFi.mode(WIFI_OFF);
+    Serial.println("Wi-Fi/web UI turned off — running autonomously from burned-in defaults");
+  }
+
+  if (wifiActive) {
+    server.handleClient();
+  }
 
   // Diagnostic fault check runs every cycle, regardless of motor state,
   // so a fault occurring while idle is not missed until the next drive.
