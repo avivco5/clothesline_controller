@@ -139,7 +139,7 @@ const uint32_t DEFAULT_REVERSE_TIME_MS = 15000;
 const uint32_t REVERSE_TIME_MS_MIN = 500;
 const uint32_t REVERSE_TIME_MS_MAX = 15000;
 
-const uint8_t DEFAULT_RECOVERY_PERCENT = 64;
+const uint8_t DEFAULT_RECOVERY_PERCENT = 100;
 const uint8_t RECOVERY_PERCENT_MIN = 10;
 const uint8_t RECOVERY_PERCENT_MAX = 100;
 
@@ -179,7 +179,7 @@ bool requestedRun = false;
 bool requestedForward = true;
 bool activeForward = true;
 
-uint16_t requestedPwm = PWM_RESOLUTION / 2;
+uint16_t requestedPwm = PWM_RESOLUTION;
 uint8_t recoveryAttempts = 0;
 
 float filteredCurrentA = 0.0f;
@@ -248,8 +248,8 @@ summary { cursor: pointer; font-weight: bold; padding: 10px 0; }
 ניסיונות שחרור: <b id="attempts">-</b>
 </div>
 
-<label for="speed">מהירות: <span class="value" id="sliderValue">50</span>%</label>
-<input id="speed" type="range" min="0" max="100" value="50"
+<label for="speed">מהירות: <span class="value" id="sliderValue">100</span>%</label>
+<input id="speed" type="range" min="0" max="100" value="100"
        oninput="document.getElementById('sliderValue').innerText=this.value">
 
 <button class="forward" onclick="sendCommand('forward')">קדימה</button>
