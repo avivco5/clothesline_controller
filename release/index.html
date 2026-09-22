@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>צורב בקר המתלה</title>
+<style>
+  :root {
+    --bg: #eef0f1;
+    --surface: #ffffff;
+    --surface-2: #e3e6e8;
+    --text: #1b2027;
+    --text-muted: #5b6570;
+    --border: #d3d7da;
+    --accent: #b5652e;
+    --accent-strong: #8f4e22;
+    --accent-contrast: #ffffff;
+    --success: #2f7a63;
+    --success-bg: #e4efe9;
+    --danger: #c23b3b;
+    --danger-bg: #f7e6e6;
+    --warning: #a6821f;
+    --mono-bg: #1b2027;
+    --mono-text: #e7e4dc;
+    --shadow: 0 1px 2px rgba(27,32,39,.06), 0 8px 24px rgba(27,32,39,.06);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14181d;
+      --surface: #1c222a;
+      --surface-2: #242b34;
+      --text: #e7e4dc;
+      --text-muted: #9aa3ac;
+      --border: #313a44;
+      --accent: #e08a42;
+      --accent-strong: #f2a664;
+      --accent-contrast: #14181d;
+      --success: #4faf91;
+      --success-bg: #1c2b26;
+      --danger: #e06060;
+      --danger-bg: #2e1c1c;
+      --warning: #d1a94a;
+      --mono-bg: #0f1318;
+      --mono-text: #e7e4dc;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #14181d;
+    --surface: #1c222a;
+    --surface-2: #242b34;
+    --text: #e7e4dc;
+    --text-muted: #9aa3ac;
+    --border: #313a44;
+    --accent: #e08a42;
+    --accent-strong: #f2a664;
+    --accent-contrast: #14181d;
+    --success: #4faf91;
+    --success-bg: #1c2b26;
+    --danger: #e06060;
+    --danger-bg: #2e1c1c;
+    --warning: #d1a94a;
+    --mono-bg: #0f1318;
+    --mono-text: #e7e4dc;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+
+  html { color-scheme: light dark; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  #app {
+    font-family: "Assistant", "Segoe UI", sans-serif;
+    max-width: 640px;
+    margin-inline: auto;
+    padding-inline: 20px;
+    padding-block: 40px 56px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12px;
+    letter-spacing: .06em;
+    color: var(--text-muted);
+    direction: ltr;
+    unicode-bidi: isolate;
+  }
+  .eyebrow::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  h1 {
+    font-family: "Secular One", "Assistant", sans-serif;
+    font-weight: 400;
+    font-size: clamp(28px, 5vw, 38px);
+    line-height: 1.15;
+    margin: 8px 0 0;
+    text-wrap: balance;
+  }
+
+  .lede {
+    font-size: 16px;
+    line-height: 1.7;
+    color: var(--text-muted);
+    margin: 10px 0 0;
+    max-width: 56ch;
+  }
+
+  section.panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    padding: 22px 24px;
+  }
+
+  h2.panel-title {
+    font-family: "Assistant", sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    margin: 0 0 16px;
+    color: var(--text);
+  }
+
+  .spec-list {
+    display: flex;
+    flex-direction: column;
+  }
+  .spec-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 16px;
+    padding-block: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .spec-row:last-child { border-bottom: none; }
+  .spec-label {
+    font-size: 13.5px;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+  .spec-value {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+    direction: ltr;
+    unicode-bidi: isolate;
+    text-align: left;
+    color: var(--text);
+  }
+
+  .install-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    text-align: center;
+    padding-block: 30px;
+  }
+
+  .install-trigger {
+    font-family: "Assistant", sans-serif;
+    font-weight: 700;
+    font-size: 17px;
+    color: var(--accent-contrast);
+    background: var(--accent);
+    border: none;
+    border-radius: 10px;
+    padding: 16px 40px;
+    cursor: pointer;
+    transition: background .15s ease, transform .05s ease;
+  }
+  .install-trigger:hover:not(:disabled) { background: var(--accent-strong); }
+  .install-trigger:active:not(:disabled) { transform: scale(.98); }
+  .install-trigger:disabled { opacity: .5; cursor: not-allowed; }
+  .install-trigger:focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 3px;
+  }
+
+  #installStatus {
+    font-size: 13.5px;
+    color: var(--text-muted);
+    min-height: 18px;
+  }
+  #installStatus[data-state="done"] { color: var(--success); font-weight: 600; }
+  #installStatus[data-state="error"] { color: var(--danger); font-weight: 600; }
+
+  .fallback-msg {
+    max-width: 46ch;
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--text-muted);
+    background: var(--surface-2);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+
+  .progress-wrap { width: 100%; max-width: 360px; }
+  .progress-track {
+    width: 100%;
+    height: 8px;
+    border-radius: 999px;
+    background: var(--surface-2);
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--accent);
+    border-radius: 999px;
+    transition: width .2s ease;
+  }
+
+  .log-details { width: 100%; text-align: right; }
+  .log-details summary {
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+  .log-output {
+    direction: ltr;
+    unicode-bidi: isolate;
+    text-align: left;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    background: var(--mono-bg);
+    color: var(--mono-text);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-top: 8px;
+    max-height: 220px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  ol.steps {
+    margin: 0;
+    padding-inline-start: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  ol.steps li {
+    font-size: 15px;
+    line-height: 1.6;
+    padding-inline-start: 6px;
+  }
+  ol.steps b { color: var(--text); }
+  ol.steps code {
+    font-family: "IBM Plex Mono", monospace;
+    background: var(--surface-2);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 13.5px;
+    direction: ltr;
+    unicode-bidi: isolate;
+  }
+
+  .after-flash {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .after-flash .wifi-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    background: var(--mono-bg);
+    color: var(--mono-text);
+    border-radius: 10px;
+    padding: 14px 18px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 14px;
+  }
+  .after-flash .wifi-card .k { color: var(--text-muted); opacity: .8; }
+  .after-flash .wifi-card .v { direction: ltr; unicode-bidi: isolate; }
+
+  footer.note {
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border);
+    padding-top: 18px;
+  }
+
+  @media (max-width: 460px) {
+    .spec-row { flex-direction: column; align-items: flex-start; gap: 2px; }
+    .spec-value { text-align: right; }
+  }
+</style>
+
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Secular+One&family=Assistant:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+</head>
+<body>
+
+<div id="app" dir="rtl" lang="he">
+
+  <div>
+    <span class="eyebrow">ESP8266 · NODEMCU V1.0</span>
+    <h1>צורב בקר המתלה</h1>
+    <p class="lede">
+      עמוד הזה צורב את הקושחה ישירות מהדפדפן לבקר המתלה המסתובב, בלי להתקין שום תוכנה.
+      מספיק כבל USB ודפדפן Chrome או Edge במחשב.
+    </p>
+  </div>
+
+  <section class="panel">
+    <h2 class="panel-title">פרטי הקושחה</h2>
+    <div class="spec-list">
+      <div class="spec-row">
+        <span class="spec-label">שבב</span>
+        <span class="spec-value">ESP8266EX</span>
+      </div>
+      <div class="spec-row">
+        <span class="spec-label">לוח</span>
+        <span class="spec-value">NodeMCU v1.0 (ESP-12E)</span>
+      </div>
+      <div class="spec-row">
+        <span class="spec-label">קובץ קושחה</span>
+        <span class="spec-value">firmware.bin</span>
+      </div>
+      <div class="spec-row">
+        <span class="spec-label">גודל</span>
+        <span class="spec-value">320,000 bytes (~313KB)</span>
+      </div>
+      <div class="spec-row">
+        <span class="spec-label">כתובת צריבה</span>
+        <span class="spec-value">0x00000000</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel install-panel">
+    <button id="flashBtn" class="install-trigger">התקן קושחה</button>
+    <div id="installStatus"></div>
+    <div id="progressWrap" class="progress-wrap" hidden>
+      <div class="progress-track"><div id="progressFill" class="progress-fill"></div></div>
+    </div>
+    <details id="logDetails" class="log-details" hidden>
+      <summary>יומן צריבה</summary>
+      <pre id="logOutput" class="log-output"></pre>
+    </details>
+    <p id="fallbackMsg" class="fallback-msg" hidden></p>
+  </section>
+
+  <section class="panel">
+    <h2 class="panel-title">לפני שמתחילים</h2>
+    <ol class="steps">
+      <li><b>חברו</b> את לוח ה-NodeMCU למחשב בכבל USB.</li>
+      <li><b>ודאו</b> שהעמוד הזה פתוח ב-Chrome או Edge — לא Firefox או Safari, ולא בנייד.</li>
+      <li>לחצו <b>"התקן קושחה"</b> למעלה, ובחלון שנפתח בחרו את היציאה הטורית — לרוב עם השם <code>Silicon Labs CP210x</code>.</li>
+      <li>המתינו לסיום הצריבה. אל תנתקו את הכבל עד שמופיעה הודעת סיום.</li>
+    </ol>
+  </section>
+
+  <section class="panel after-flash">
+    <h2 class="panel-title">אחרי הצריבה</h2>
+    <div class="wifi-card">
+      <span class="k">רשת Wi-Fi</span>
+      <span class="v">Clothesline-Control</span>
+    </div>
+    <div class="wifi-card">
+      <span class="k">סיסמה</span>
+      <span class="v">clothesline</span>
+    </div>
+    <div class="wifi-card">
+      <span class="k">כתובת בקרה</span>
+      <span class="v">http://192.168.4.1</span>
+    </div>
+  </section>
+
+  <footer class="note">
+    הצריבה דורשת Chrome או Edge על מחשב (Web Serial API אינו נתמך ב-Firefox/Safari או בדפדפני נייד).
+    בפעם הראשונה שמחברים את הלוח, ייתכן שוויndows יתקין אוטומטית מנהל התקן עבור ה-USB-UART (Silicon Labs CP210x) —
+    זה עשוי לקחת כמה שניות. עמוד זה משקף גרסת קושחה מסוימת שנצרבה בזמן הפרסום; אם הבקר עודכן מאז, יש לבקש קישור מעודכן.
+  </footer>
+
+</div>
+
+<script src="fw-data.js"></script>
+<script src="clothesline-flasher-bundle.min.js"></script>
+<script>
+  (function () {
+    var btn = document.getElementById('flashBtn');
+    var caption = document.getElementById('installStatus');
+    var progressWrap = document.getElementById('progressWrap');
+    var progressFill = document.getElementById('progressFill');
+    var logDetails = document.getElementById('logDetails');
+    var logOutput = document.getElementById('logOutput');
+    var fallbackMsg = document.getElementById('fallbackMsg');
+
+    function base64ToBytes(b64) {
+      var binary = atob(b64);
+      var bytes = new Uint8Array(binary.length);
+      for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      return bytes;
+    }
+
+    function showFallback(text) {
+      fallbackMsg.hidden = false;
+      fallbackMsg.textContent = text;
+      btn.disabled = true;
+    }
+
+    if (!("serial" in navigator)) {
+      showFallback('הדפדפן הזה לא תומך בחיבור טורי מהדפדפן (Web Serial). פתח את הקישור הזה ב-Chrome או Edge, על מחשב (לא נייד).');
+    } else if (!window.isSecureContext) {
+      showFallback('הדף הזה לא נטען בהקשר מאובטח (HTTPS/localhost). נסה לפתוח את הקישור ישירות בלשונית נפרדת.');
+    } else if (!window.ClotheslineFlasher) {
+      showFallback('שגיאה בטעינת כלי הצריבה. רענן את הדף ונסה שוב.');
+    }
+
+    var stateLabels = {
+      connecting: 'מתחבר ללוח…',
+      writing: 'צורב… אל תנתקו את הכבל',
+      resetting: 'מפעיל מחדש את הלוח…',
+      done: 'הצריבה הושלמה בהצלחה'
+    };
+
+    btn.addEventListener('click', async function () {
+      btn.disabled = true;
+      caption.textContent = '';
+      caption.removeAttribute('data-state');
+      progressWrap.hidden = false;
+      progressFill.style.width = '0%';
+      logDetails.hidden = false;
+      logOutput.textContent = '';
+
+      function log(line) {
+        logOutput.textContent += line + '\n';
+        logOutput.scrollTop = logOutput.scrollHeight;
+      }
+
+      try {
+        var firmwareBytes = base64ToBytes(FW_BASE64);
+        await window.ClotheslineFlasher.flashFirmware(firmwareBytes, function (ev) {
+          if (ev.type === 'log') {
+            log(ev.message);
+          } else if (ev.type === 'state') {
+            caption.textContent = stateLabels[ev.state] || ev.state;
+            caption.dataset.state = ev.state;
+          } else if (ev.type === 'progress') {
+            var pct = ev.total ? Math.round((ev.written / ev.total) * 100) : 0;
+            progressFill.style.width = pct + '%';
+          }
+        });
+      } catch (err) {
+        var message = err && err.message ? err.message : String(err);
+        caption.textContent = 'שגיאה: ' + message;
+        caption.dataset.state = 'error';
+        log('שגיאה: ' + (err && err.stack ? err.stack : message));
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  })();
+</script>
+</body>
+</html>
