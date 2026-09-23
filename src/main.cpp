@@ -167,9 +167,9 @@ const uint8_t DEFAULT_MAX_RECOVERY_ATTEMPTS = 5;
 const uint8_t MAX_RECOVERY_ATTEMPTS_MIN = 1;
 const uint8_t MAX_RECOVERY_ATTEMPTS_MAX = 5;
 
-const uint32_t DEFAULT_RECOVERY_RESET_MS = 60000;
+const uint32_t DEFAULT_RECOVERY_RESET_MS = 3000000; // 50 minutes
 const uint32_t RECOVERY_RESET_MS_MIN = 5000;
-const uint32_t RECOVERY_RESET_MS_MAX = 600000;
+const uint32_t RECOVERY_RESET_MS_MAX = 3600000;      // 1 hour, headroom above the default
 
 // Auto-retry from an overload-caused LOCKOUT only (never from a driver
 // fault LOCKOUT) — see note near top of file.
