@@ -139,10 +139,6 @@ const uint32_t DEFAULT_REVERSE_TIME_MS = 15000;
 const uint32_t REVERSE_TIME_MS_MIN = 500;
 const uint32_t REVERSE_TIME_MS_MAX = 15000;
 
-const uint8_t DEFAULT_RECOVERY_PERCENT = 100;
-const uint8_t RECOVERY_PERCENT_MIN = 10;
-const uint8_t RECOVERY_PERCENT_MAX = 100;
-
 const uint32_t DEFAULT_STOP_DELAY_MS = 4000;
 const uint32_t STOP_DELAY_MS_MIN = 100;
 const uint32_t STOP_DELAY_MS_MAX = 5000;
@@ -179,7 +175,7 @@ bool requestedRun = false;
 bool requestedForward = true;
 bool activeForward = true;
 
-uint16_t requestedPwm = PWM_RESOLUTION;
+const uint16_t requestedPwm = PWM_RESOLUTION; // speed is fixed at 100%, no user control
 uint8_t recoveryAttempts = 0;
 
 float filteredCurrentA = 0.0f;
@@ -196,7 +192,7 @@ bool wifiActive = true;
 float overcurrentA = DEFAULT_OVERCURRENT_A;
 uint32_t overcurrentDelayMs = DEFAULT_OVERCURRENT_DELAY_MS;
 uint32_t reverseTimeMs = DEFAULT_REVERSE_TIME_MS;
-uint16_t recoveryPwm = (uint16_t)((uint32_t)DEFAULT_RECOVERY_PERCENT * PWM_RESOLUTION / 100);
+const uint16_t recoveryPwm = PWM_RESOLUTION; // recovery speed is fixed at 100%, no user control
 uint32_t stopDelayMs = DEFAULT_STOP_DELAY_MS;
 uint8_t maxRecoveryAttempts = DEFAULT_MAX_RECOVERY_ATTEMPTS;
 uint32_t recoveryResetMs = DEFAULT_RECOVERY_RESET_MS;
@@ -243,14 +239,11 @@ summary { cursor: pointer; font-weight: bold; padding: 10px 0; }
 <div class="status">
 מצב: <b id="state">טוען...</b><br>
 זרם: <b id="current">-</b> A<br>
-מהירות: <b id="speedValue">-</b>%<br>
 כיוון מבוקש: <b id="direction">-</b><br>
 ניסיונות שחרור: <b id="attempts">-</b>
 </div>
 
-<label for="speed">מהירות: <span class="value" id="sliderValue">100</span>%</label>
-<input id="speed" type="range" min="0" max="100" value="100"
-       oninput="document.getElementById('sliderValue').innerText=this.value">
+<div class="note">המנוע פועל תמיד במהירות מלאה (100%) — אין אפשרות להגדיר מהירות נמוכה יותר.</div>
 
 <button class="forward" onclick="sendCommand('forward')">קדימה</button>
 <button class="reverse" onclick="sendCommand('reverse')">אחורה</button>
@@ -272,10 +265,6 @@ summary { cursor: pointer; font-weight: bold; padding: 10px 0; }
 <div class="field">
 <label for="setReverseTime">משך היפוך שחרור (שניות)</label>
 <input id="setReverseTime" type="number" step="0.5">
-</div>
-<div class="field">
-<label for="setRecoveryPct">מהירות שחרור (%)</label>
-<input id="setRecoveryPct" type="number" step="1">
 </div>
 <div class="field">
 <label for="setStopDelay">זמן עצירה בין החלפת כיוון (מילישניות)</label>
@@ -303,8 +292,7 @@ summary { cursor: pointer; font-weight: bold; padding: 10px 0; }
 
 <script>
 function sendCommand(command) {
-  const speed = document.getElementById('speed').value;
-  fetch('/api/set?cmd=' + command + '&speed=' + speed)
+  fetch('/api/set?cmd=' + command)
     .then(updateStatus);
 }
 
@@ -314,7 +302,6 @@ function updateStatus() {
     .then(data => {
       document.getElementById('state').innerText = data.state;
       document.getElementById('current').innerText = data.current;
-      document.getElementById('speedValue').innerText = data.speed;
       document.getElementById('direction').innerText = data.direction;
       document.getElementById('attempts').innerText = data.attempts;
     });
@@ -332,7 +319,6 @@ function applySettingsToForm(s) {
   setField('setOvercurrentA', s.overcurrentA, s.overcurrentA_min, s.overcurrentA_max);
   setField('setOverDelay', s.overcurrentDelayS, s.overcurrentDelayS_min, s.overcurrentDelayS_max);
   setField('setReverseTime', s.reverseTimeS, s.reverseTimeS_min, s.reverseTimeS_max);
-  setField('setRecoveryPct', s.recoveryPercent, s.recoveryPercent_min, s.recoveryPercent_max);
   setField('setStopDelay', s.stopDelayMs, s.stopDelayMs_min, s.stopDelayMs_max);
   setField('setMaxAttempts', s.maxAttempts, s.maxAttempts_min, s.maxAttempts_max);
   setField('setResetTime', s.resetTimeS, s.resetTimeS_min, s.resetTimeS_max);
@@ -350,7 +336,6 @@ function saveSettings() {
     overcurrentA: document.getElementById('setOvercurrentA').value,
     overcurrentDelayS: document.getElementById('setOverDelay').value,
     reverseTimeS: document.getElementById('setReverseTime').value,
-    recoveryPercent: document.getElementById('setRecoveryPct').value,
     stopDelayMs: document.getElementById('setStopDelay').value,
     maxAttempts: document.getElementById('setMaxAttempts').value,
     resetTimeS: document.getElementById('setResetTime').value,
@@ -502,13 +487,10 @@ const char* stateText() {
 }
 
 void buildStatusJson(char* buf, size_t bufSize) {
-  int speedPercent = map(requestedPwm, 0, PWM_RESOLUTION, 0, 100);
-
   snprintf(buf, bufSize,
-    "{\"state\":\"%s\",\"current\":%.2f,\"speed\":%d,\"direction\":\"%s\",\"attempts\":%u}",
+    "{\"state\":\"%s\",\"current\":%.2f,\"direction\":\"%s\",\"attempts\":%u}",
     stateText(),
     filteredCurrentA,
-    speedPercent,
     requestedForward ? "קדימה" : "אחורה",
     (unsigned)recoveryAttempts
   );
@@ -524,11 +506,6 @@ void setOvercurrentDelayMs(uint32_t v) {
 
 void setReverseTimeMs(uint32_t v) {
   reverseTimeMs = constrain(v, REVERSE_TIME_MS_MIN, REVERSE_TIME_MS_MAX);
-}
-
-void setRecoveryPercent(int percent) {
-  percent = constrain(percent, (int)RECOVERY_PERCENT_MIN, (int)RECOVERY_PERCENT_MAX);
-  recoveryPwm = (uint16_t)((uint32_t)percent * PWM_RESOLUTION / 100);
 }
 
 void setStopDelayMs(uint32_t v) {
@@ -551,7 +528,6 @@ void resetSettingsToDefaults() {
   overcurrentA = DEFAULT_OVERCURRENT_A;
   overcurrentDelayMs = DEFAULT_OVERCURRENT_DELAY_MS;
   reverseTimeMs = DEFAULT_REVERSE_TIME_MS;
-  recoveryPwm = (uint16_t)((uint32_t)DEFAULT_RECOVERY_PERCENT * PWM_RESOLUTION / 100);
   stopDelayMs = DEFAULT_STOP_DELAY_MS;
   maxRecoveryAttempts = DEFAULT_MAX_RECOVERY_ATTEMPTS;
   recoveryResetMs = DEFAULT_RECOVERY_RESET_MS;
@@ -560,14 +536,11 @@ void resetSettingsToDefaults() {
 }
 
 void buildSettingsJson(char* buf, size_t bufSize) {
-  int recoveryPercent = (int)((uint32_t)recoveryPwm * 100 / PWM_RESOLUTION);
-
   snprintf(buf, bufSize,
     "{"
     "\"overcurrentA\":%.2f,\"overcurrentA_min\":%.2f,\"overcurrentA_max\":%.2f,"
     "\"overcurrentDelayS\":%.2f,\"overcurrentDelayS_min\":%.2f,\"overcurrentDelayS_max\":%.2f,"
     "\"reverseTimeS\":%.2f,\"reverseTimeS_min\":%.2f,\"reverseTimeS_max\":%.2f,"
-    "\"recoveryPercent\":%d,\"recoveryPercent_min\":%u,\"recoveryPercent_max\":%u,"
     "\"stopDelayMs\":%u,\"stopDelayMs_min\":%u,\"stopDelayMs_max\":%u,"
     "\"maxAttempts\":%u,\"maxAttempts_min\":%u,\"maxAttempts_max\":%u,"
     "\"resetTimeS\":%.1f,\"resetTimeS_min\":%.1f,\"resetTimeS_max\":%.1f,"
@@ -576,7 +549,6 @@ void buildSettingsJson(char* buf, size_t bufSize) {
     overcurrentA, OVERCURRENT_A_MIN, OVERCURRENT_A_MAX,
     overcurrentDelayMs / 1000.0f, OVERCURRENT_DELAY_MS_MIN / 1000.0f, OVERCURRENT_DELAY_MS_MAX / 1000.0f,
     reverseTimeMs / 1000.0f, REVERSE_TIME_MS_MIN / 1000.0f, REVERSE_TIME_MS_MAX / 1000.0f,
-    recoveryPercent, (unsigned)RECOVERY_PERCENT_MIN, (unsigned)RECOVERY_PERCENT_MAX,
     (unsigned)stopDelayMs, (unsigned)STOP_DELAY_MS_MIN, (unsigned)STOP_DELAY_MS_MAX,
     (unsigned)maxRecoveryAttempts, (unsigned)MAX_RECOVERY_ATTEMPTS_MIN, (unsigned)MAX_RECOVERY_ATTEMPTS_MAX,
     recoveryResetMs / 1000.0f, RECOVERY_RESET_MS_MIN / 1000.0f, RECOVERY_RESET_MS_MAX / 1000.0f,
@@ -612,9 +584,6 @@ void handleSettingsSet() {
   if (server.hasArg("reverseTimeS")) {
     setReverseTimeMs((uint32_t)(server.arg("reverseTimeS").toFloat() * 1000.0f));
   }
-  if (server.hasArg("recoveryPercent")) {
-    setRecoveryPercent(server.arg("recoveryPercent").toInt());
-  }
   if (server.hasArg("stopDelayMs")) {
     setStopDelayMs((uint32_t)server.arg("stopDelayMs").toInt());
   }
@@ -629,9 +598,9 @@ void handleSettingsSet() {
   }
 
   Serial.printf(
-    "Settings updated: overcurrentA=%.2f delay=%lums reverse=%lums recoveryPwm=%u/%u stopDelay=%lums maxAttempts=%u resetTime=%lums autoRetry=%lums\n",
+    "Settings updated: overcurrentA=%.2f delay=%lums reverse=%lums stopDelay=%lums maxAttempts=%u resetTime=%lums autoRetry=%lums\n",
     overcurrentA, (unsigned long)overcurrentDelayMs, (unsigned long)reverseTimeMs,
-    recoveryPwm, PWM_RESOLUTION, (unsigned long)stopDelayMs,
+    (unsigned long)stopDelayMs,
     (unsigned)maxRecoveryAttempts, (unsigned long)recoveryResetMs, (unsigned long)autoRetryMs
   );
 
@@ -650,10 +619,9 @@ void handleSettingsReset() {
 void handleSet() {
   autoStartPending = false; // any manual command cancels a pending autostart
 
-  if (server.hasArg("speed")) {
-    int speedPercent = constrain(server.arg("speed").toInt(), 0, 100);
-    requestedPwm = map(speedPercent, 0, 100, 0, PWM_RESOLUTION);
-  }
+  // Speed is fixed at 100% (PWM_RESOLUTION) — there is no user-facing speed
+  // control. Lower speeds did not produce enough torque to move the motor,
+  // so the option to run below full speed was removed entirely.
 
   String command = server.arg("cmd");
 
@@ -791,8 +759,7 @@ void loop() {
     } else if (state == IDLE && now >= AUTOSTART_DELAY_MS) {
       autoStartPending = false;
       requestedForward = true;
-      requestedPwm = (uint16_t)((uint32_t)AUTOSTART_SPEED_PERCENT * PWM_RESOLUTION / 100);
-      requestedRun = true;
+      requestedRun = true; // requestedPwm is fixed at PWM_RESOLUTION (100%)
       Serial.println("Autostart: no fault detected, starting forward motion");
       startRequestedDrive();
     }
