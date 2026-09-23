@@ -64,16 +64,24 @@
  *
  * AUTO-RETRY FROM LOCKOUT — second explicit deviation from "LOCKOUT
  * requires the user to press Unlock", also requested by the project
- * owner. This applies ONLY to a LOCKOUT caused by overload that never
- * cleared (2 failed recovery attempts, or overload persisting through a
- * recovery reverse) — every autoRetryMs (see below), the unit clears the
- * attempt counter and resumes the previously requested direction on its
- * own, on the theory that a snag may free itself over time with no one
- * around to press Unlock.
- * A LOCKOUT caused by a VNH5019 diagnostic fault (DIAGA/DIAGB) is
- * deliberately EXCLUDED from auto-retry — that can indicate a real
- * driver/motor electrical fault, not just a stuck rope, and still
- * requires a human to press Unlock.
+ * owner. Applies to BOTH lockout causes (software overload timeout, and
+ * a VNH5019 diagnostic fault on DIAGA/DIAGB) — every autoRetryMs (see
+ * below), the unit clears the attempt counter and resumes the previously
+ * requested direction on its own, on the theory that a snag may free
+ * itself over time with no one around to press Unlock.
+ * Auto-retry on a DIAG fault does not weaken any hardware protection:
+ * the VNH5019 disconnects motor current on its own the instant DIAGA/
+ * DIAGB goes low, entirely independent of the ESP8266 — the driver chip
+ * protects itself regardless of what this firmware decides to do next.
+ * This only affects how soon the unit tries the requested direction
+ * again after that.
+ * CAVEAT: DIAGA/DIAGB is a single combined fault flag — this firmware
+ * cannot tell a locked-rotor overcurrent trip (likely a stuck rope,
+ * plausibly self-clearing) apart from a genuine wiring short or driver
+ * failure (won't clear on its own, and will just keep re-tripping every
+ * autoRetryMs indefinitely). If DIAG-cause LOCKOUT recurs repeatedly,
+ * that is a sign to physically inspect the wiring/driver, not to assume
+ * it will resolve itself.
  *
  * WI-FI AUTO-OFF — the AP and web UI (see WIFI_ON_DURATION_MS below) are
  * for initial setup/tuning only, per the project owner: once the right
@@ -443,7 +451,13 @@ void enterLockout(bool isFault) {
   state = LOCKOUT;
   lockoutIsFault = isFault;
   lockoutStartMs = millis();
-  autoRetryArmed = !isFault;
+  // The VNH5019 disconnects motor current on its own the instant DIAGA/
+  // DIAGB goes low, entirely independent of the ESP8266 — that protects
+  // the driver chip regardless of what happens here. Auto-retry is
+  // therefore armed for both lockout causes; it does not weaken that
+  // hardware protection, it only decides whether a human must press
+  // Unlock before the unit tries the requested direction again.
+  autoRetryArmed = true;
   Serial.println(isFault ? "LOCKOUT (driver fault)" : "LOCKOUT (overload not cleared)");
 }
 
@@ -518,7 +532,7 @@ const char* stateText() {
     case RECOVERY_REVERSE: return "שחרור אוטומטי";
     case STOP_AFTER_RECOVERY: return "חוזר לכיוון המקורי";
     case LOCKOUT:
-      return lockoutIsFault ? "נעול - תקלת חומרה, נדרש שחרור ידני"
+      return lockoutIsFault ? "נעול - תקלת חומרה, ינסה שוב אוטומטית"
                              : "נעול - עומס יתר, ינסה שוב אוטומטית";
   }
 
