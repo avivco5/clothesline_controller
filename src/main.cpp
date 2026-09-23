@@ -109,6 +109,18 @@ const bool FORWARD_INA_HIGH = true;
 const uint16_t PWM_RESOLUTION = 200;   // analogWriteRange() steps
 const uint32_t PWM_FREQUENCY_HZ = 10000;
 
+// Soft-start: ramp PWM from 0 to full target over this many ms instead of
+// slamming straight to 100% duty. A stalled/locked-rotor DC motor draws
+// its highest current at the instant full voltage is applied with zero
+// back-EMF; ramping the duty cycle up reduces that inrush spike, which
+// lowers the odds of tripping the VNH5019's own internal DIAG overcurrent/
+// thermal protection (see driverFault()) or sagging the shared 5V supply
+// enough to reset the ESP8266. This does NOT reduce current once the
+// motor is actually moving — a genuine mid-run stall (snagged line) will
+// still pull full stall current after the ramp completes, which is what
+// the DIAG pins and updateCurrentAndProtection() exist to catch.
+const uint32_t SOFT_START_RAMP_MS = 400;
+
 // ── Current sensing (VNH5019 CS: ~0.14 V/A, valid only while driving) ───
 const float ADC_MAX_COUNTS = 1023.0f;      // ESP8266 ADC resolution
 const float ADC_FULL_SCALE_V = 3.3f;       // NodeMCU A0 divider (see note #2)
@@ -177,6 +189,11 @@ bool activeForward = true;
 
 const uint16_t requestedPwm = PWM_RESOLUTION; // speed is fixed at 100%, no user control
 uint8_t recoveryAttempts = 0;
+
+// Soft-start ramp state (see SOFT_START_RAMP_MS above).
+bool softStartRamping = false;
+uint16_t softStartTargetPwm = 0;
+uint32_t softStartBeginMs = 0;
 
 float filteredCurrentA = 0.0f;
 
@@ -379,6 +396,7 @@ void stopMotor() {
   analogWrite(PIN_PWM, 0);
   digitalWrite(PIN_INA, LOW);
   digitalWrite(PIN_INB, LOW);
+  softStartRamping = false;
 }
 
 void driveMotor(bool forward, uint16_t pwmValue) {
@@ -394,7 +412,28 @@ void driveMotor(bool forward, uint16_t pwmValue) {
   digitalWrite(PIN_INA, inaHigh ? HIGH : LOW);
   digitalWrite(PIN_INB, inaHigh ? LOW : HIGH);
 
-  analogWrite(PIN_PWM, pwmValue);
+  // Ramp up rather than slam straight to pwmValue — see SOFT_START_RAMP_MS.
+  softStartTargetPwm = pwmValue;
+  softStartBeginMs = millis();
+  softStartRamping = true;
+}
+
+// Advances the soft-start ramp; call once per loop() iteration while the
+// motor may be driving. No-op when no ramp is in progress.
+void updateSoftStartRamp(uint32_t now) {
+  if (!softStartRamping) {
+    return;
+  }
+
+  uint32_t elapsed = now - softStartBeginMs;
+  if (elapsed >= SOFT_START_RAMP_MS) {
+    analogWrite(PIN_PWM, softStartTargetPwm);
+    softStartRamping = false;
+    return;
+  }
+
+  uint16_t rampedPwm = (uint16_t)((uint32_t)softStartTargetPwm * elapsed / SOFT_START_RAMP_MS);
+  analogWrite(PIN_PWM, rampedPwm);
 }
 
 void enterLockout(bool isFault) {
@@ -655,15 +694,10 @@ void handleSet() {
       requestedRun = requestedPwm > 0;
 
       if (state == DRIVE && newForward == activeForward) {
-        // Same direction already running: just update speed, no need to
-        // go through the stop/wait/reverse sequence (that is reserved for
-        // an actual direction change, per spec item 4).
-        if (requestedRun) {
-          driveMotor(activeForward, requestedPwm);
-        } else {
-          stopMotor();
-          state = IDLE;
-        }
+        // Same direction already running at the only speed there is
+        // (100%, fixed) — nothing to update, and calling driveMotor()
+        // again would needlessly restart the soft-start ramp from zero.
+        // Intentional no-op.
       } else {
         scheduleManualStart();
       }
@@ -780,6 +814,7 @@ void loop() {
 
   if (isDriving()) {
     updateCurrentAndProtection(now);
+    updateSoftStartRamp(now);
   }
 
   switch (state) {
