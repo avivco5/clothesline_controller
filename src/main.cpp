@@ -100,7 +100,7 @@ const char* AP_PASSWORD = "clothesline";
 // The AP + web UI are for initial setup/tuning only, not normal operation.
 // They shut off this many ms after boot; from then on the unit runs purely
 // from the burned-in defaults above, with no network active at all.
-const uint32_t WIFI_ON_DURATION_MS = 300000; // 5 minutes
+const uint32_t WIFI_ON_DURATION_MS = 3600000; // 1 hour
 
 // ── Pins ─────────────────────────────────────────────────────────────────
 const uint8_t PIN_PWM = D5;          // GPIO14
