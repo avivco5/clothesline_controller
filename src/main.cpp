@@ -147,7 +147,7 @@ const uint8_t AUTOSTART_SPEED_PERCENT = 100;
 // Defaults + safe clamp ranges. Actual live values are the non-const
 // globals further down (overcurrentA, overcurrentDelayMs, ...), editable
 // from the web UI and always reset to these defaults on boot.
-const float DEFAULT_OVERCURRENT_A = 3.5f;
+const float DEFAULT_OVERCURRENT_A = 5.0f;
 const float OVERCURRENT_A_MIN = 1.5f;
 const float OVERCURRENT_A_MAX = 9.0f;      // stay under the 10A fuse rating
 
@@ -163,7 +163,7 @@ const uint32_t DEFAULT_STOP_DELAY_MS = 4000;
 const uint32_t STOP_DELAY_MS_MIN = 100;
 const uint32_t STOP_DELAY_MS_MAX = 5000;
 
-const uint8_t DEFAULT_MAX_RECOVERY_ATTEMPTS = 2;
+const uint8_t DEFAULT_MAX_RECOVERY_ATTEMPTS = 5;
 const uint8_t MAX_RECOVERY_ATTEMPTS_MIN = 1;
 const uint8_t MAX_RECOVERY_ATTEMPTS_MAX = 5;
 
