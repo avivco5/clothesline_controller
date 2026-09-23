@@ -507,8 +507,13 @@ void updateCurrentAndProtection(uint32_t now) {
     if (now - overloadStartMs >= overcurrentDelayMs) {
       overloadStartMs = 0;
 
-      if (state == DRIVE &&
+      if ((state == DRIVE || state == RECOVERY_REVERSE) &&
           recoveryAttempts < maxRecoveryAttempts) {
+        // Overload during the recovery reverse itself (still snagged even
+        // going backward) gets the same stop/wait/retry cycle as overload
+        // in the original driving direction, instead of jumping straight
+        // to a full LOCKOUT after a single reverse attempt. activeForward
+        // is untouched here, so the next attempt reverses the same way.
         stopMotor();
         state = STOP_BEFORE_REVERSE;
         stateStartMs = now;
